@@ -1,0 +1,9 @@
+env
+dist
+/*_env/
+sample_repo/noarch/.cache
+__pycache__/
+/tools/repo/
+.env
+.DS_Store
+marker_investigation.txt
