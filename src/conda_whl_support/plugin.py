@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from conda import plugins
+from conda.core.path_actions import Action
 
 if TYPE_CHECKING:
     from typing import Generator
@@ -39,6 +40,59 @@ def add_whl_support(command: str) -> None:
     return
 
 
+class PackageInstallationLogger(Action):
+    """Log information about packages that were installed or removed."""
+    
+    def verify(self):
+        """Verify that the action can be executed."""
+        log.debug("Verifying package installation logger action")
+        self._verified = True
+    
+    def execute(self):
+        """Log information about installed and removed packages."""
+        log.info("=== Conda Package Installation Summary ===")
+        
+        # Log installed packages
+        if self.link_precs:
+            log.info(f"Installed {len(self.link_precs)} package(s):")
+            for prec in self.link_precs:
+                log.info(f"  + {prec.name} {prec.version} ({prec.build})")
+        else:
+            log.info("No packages were installed")
+        
+        # Log removed packages
+        if self.unlink_precs:
+            log.info(f"Removed {len(self.unlink_precs)} package(s):")
+            for prec in self.unlink_precs:
+                log.info(f"  - {prec.name} {prec.version} ({prec.build})")
+        else:
+            log.info("No packages were removed")
+        
+        # Log update specifications
+        if self.update_specs:
+            log.info(f"Updated {len(self.update_specs)} package(s):")
+            for spec in self.update_specs:
+                log.info(f"  ~ {spec}")
+        
+        # Log remove specifications
+        if self.remove_specs:
+            log.info(f"Remove specifications: {self.remove_specs}")
+        
+        # Log neutered specifications
+        if self.neutered_specs:
+            log.info(f"Neutered specifications: {self.neutered_specs}")
+        
+        log.info("=== End Package Installation Summary ===")
+    
+    def reverse(self):
+        """Reverse the action if it fails."""
+        log.debug("Reversing package installation logger action")
+    
+    def cleanup(self):
+        """Clean up any resources created during the action."""
+        log.debug("Cleaning up package installation logger action")
+
+
 @plugins.hookimpl
 def conda_pre_commands() -> Generator[plugins.CondaPreCommand, None, None]:
     yield plugins.CondaPreCommand(
@@ -54,4 +108,13 @@ def conda_pre_commands() -> Generator[plugins.CondaPreCommand, None, None]:
             "env_update",
             "list",
         },
+    )
+
+
+@plugins.hookimpl
+def conda_post_transaction_actions() -> Generator[plugins.CondaPostTransactionAction, None, None]:
+    """Register post-transaction hooks for package installation logging."""
+    yield plugins.CondaPostTransactionAction(
+        name="package-installation-logger",
+        action=PackageInstallationLogger,
     )
